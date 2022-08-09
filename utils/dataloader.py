@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import torch
+from torch.utils.data import Subset
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision
@@ -607,15 +608,12 @@ def load_data_path(args, data_pt):
         data, target = torch.load(data_pt)
         print("Load condensed data ", data_pt, data.shape)
         # This does not make difference to the performance
-        # data = torch.clamp(data, min=0., max=1.)
+        data = torch.clamp(data, min=0., max=1.)
         if args.factor > 1:
             data, target = decode(args, data, target)
 
         train_transform, _ = transform_fn(augment=args.augment, from_tensor=True)
         train_dataset = TensorDataset(data, target, train_transform)
-
-
-
     else:
         if args.dataset == 'cifar10':
             train_dataset = torchvision.datasets.CIFAR10(args.data_dir,
@@ -666,11 +664,6 @@ def load_data_path(args, data_pt):
                                                         transform=test_transform)
 
     print("Training data shape: ", train_dataset[0][0].shape)
-    os.makedirs('./results', exist_ok=True)
-    # save_img('./results/test.png',
-    #      torch.stack([d[0] for d in train_dataset]),
-    #      dataname=args.dataset)
-
     return train_dataset, val_dataset
 
 

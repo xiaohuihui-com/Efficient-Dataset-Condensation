@@ -1,31 +1,23 @@
 import os
 import datetime
 import argparse
-import numpy as np
 import torch
-import torch.nn as nn
 from models import model_param_init
 from utils.common import set_seed
 from utils.dataloader import load_data
 from utils.trainer import Trainer, train_data
 from config import get_config, update_config
-from config import settings
-from config.settings import set_logfile
-import logging.config
-import warnings
+from config.logger import Logger
 
-warnings.filterwarnings("ignore")
-logging.config.dictConfig(settings.LOGGING_DIC)
-logger = logging.getLogger()
+logger = Logger()
 
 
-def main(args, repeat=1):
+def main(args):
     start_time = datetime.datetime.now()
     opt = get_config(args.config)
     update_config(opt, args.__dict__)
     save_dir = os.path.join(opt.save_dir, opt.dataset, opt.model)
     os.makedirs(save_dir, exist_ok=True)
-    set_logfile(logger, logdir=save_dir)
     logger.info('{}'.format(opt))
     os.environ["CUDA_VISIBLE_DEVICES"] = opt.device_ids
     set_seed(opt.seed)
@@ -57,7 +49,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, \
                         default='cifar10',
                         choices=['mnist', 'fashion', 'svhn', 'cifar10', 'cifar100', 'imagenet'])
-    parser.add_argument('--data_dir', type=str, default='../Efficient-Dataset-Condensation/data')
+    parser.add_argument('--data_dir', type=str, default='./data')
     parser.add_argument('--model', type=str)
 
     args = parser.parse_args()

@@ -6,25 +6,29 @@ import torch.nn.functional as F
 from .transformer import transform_mnist, transform_fashion, transform_cifar, transform_svhn, transform_imagenet
 from .dataloader import TensorDataset, MultiEpochsDataLoader
 from .trainer import test_data
+from .decoder import decode_fn
 
 
 class Synthesizer():
     """Condensed data class
+    args:
+        ipc,factor,size,num_classes,channel,decode_type
     """
 
-    def __init__(self, args, nclass, nchannel, hs, ws, device):
+    def __init__(self, args, device):
         self.ipc = args.ipc
-        self.nclass = nclass
-        self.nchannel = nchannel
-        self.size = (hs, ws)
+        self.nclass = args.num_classes
+        self.nchannel = args.channel
+        self.size = (args.size, args.size)
         self.device = device
+        self.decode_type = args.decode_type
 
-        self.data = torch.randn(size=(self.nclass * self.ipc, self.nchannel, hs, ws),
+        self.data = torch.randn(size=(self.nclass * self.ipc, self.nchannel, self.size[0], self.size[1]),
                                 dtype=torch.float,
                                 requires_grad=True,
                                 device=self.device)
         self.data.data = torch.clamp(self.data.data / 4 + 0.5, min=0., max=1.)
-        self.targets = torch.tensor([np.ones(self.ipc) * i for i in range(nclass)],
+        self.targets = torch.tensor([np.ones(self.ipc) * i for i in range(self.nclass)],
                                     dtype=torch.long,
                                     requires_grad=False,
                                     device=self.device).view(-1)
@@ -87,87 +91,6 @@ class Synthesizer():
 
         return data, target
 
-    def decode_zoom(self, img, target, factor):
-        """Uniform multi-formation
-        """
-        h = img.shape[-1]
-        remained = h % factor
-        if remained > 0:
-            img = F.pad(img, pad=(0, factor - remained, 0, factor - remained), value=0.5)
-        s_crop = ceil(h / factor)
-        n_crop = factor ** 2
-
-        cropped = []
-        for i in range(factor):
-            for j in range(factor):
-                h_loc = i * s_crop
-                w_loc = j * s_crop
-                cropped.append(img[:, :, h_loc:h_loc + s_crop, w_loc:w_loc + s_crop])
-        cropped = torch.cat(cropped)
-        data_dec = self.resize(cropped)
-        target_dec = torch.cat([target for _ in range(n_crop)])
-
-        return data_dec, target_dec
-
-    def decode_zoom_multi(self, img, target, factor_max):
-        """Multi-scale multi-formation
-        """
-        data_multi = []
-        target_multi = []
-        for factor in range(1, factor_max + 1):
-            decoded = self.decode_zoom(img, target, factor)
-            data_multi.append(decoded[0])
-            target_multi.append(decoded[1])
-
-        return torch.cat(data_multi), torch.cat(target_multi)
-
-    def decode_zoom_bound(self, img, target, factor_max, bound=128):
-        """Uniform multi-formation with bounded number of synthetic data
-        """
-        bound_cur = bound - len(img)
-        budget = len(img)
-
-        data_multi = []
-        target_multi = []
-
-        idx = 0
-        decoded_total = 0
-        for factor in range(factor_max, 0, -1):
-            decode_size = factor ** 2
-            if factor > 1:
-                n = min(bound_cur // decode_size, budget)
-            else:
-                n = budget
-
-            decoded = self.decode_zoom(img[idx:idx + n], target[idx:idx + n], factor)
-            data_multi.append(decoded[0])
-            target_multi.append(decoded[1])
-
-            idx += n
-            budget -= n
-            decoded_total += n * decode_size
-            bound_cur = bound - decoded_total - budget
-
-            if budget == 0:
-                break
-
-        data_multi = torch.cat(data_multi)
-        target_multi = torch.cat(target_multi)
-        return data_multi, target_multi
-
-    def decode(self, data, target, bound=128):
-        """Multi-formation
-        """
-        if self.factor > 1:
-            if self.decode_type == 'multi':
-                data, target = self.decode_zoom_multi(data, target, self.factor)
-            elif self.decode_type == 'bound':
-                data, target = self.decode_zoom_bound(data, target, self.factor, bound=bound)
-            else:
-                data, target = self.decode_zoom(data, target, self.factor)
-
-        return data, target
-
     def sample(self, c, max_size=128):
         """Sample synthetic data per class
         """
@@ -176,11 +99,12 @@ class Synthesizer():
         data = self.data[idx_from:idx_to]
         target = self.targets[idx_from:idx_to]
 
-        data, target = self.decode(data, target, bound=max_size)
+        data, target = decode_fn(data, target, self.factor, self.decode_type, bound=max_size)
         data, target = self.subsample(data, target, max_size=max_size)
         return data, target
 
     def loader(self, args, augment=True):
+        """对合成数据采用基本数据增强+数据来源为张量"""
         """Data loader for condensed data
         """
         if args.dataset == 'imagenet':
@@ -205,7 +129,7 @@ class Synthesizer():
             idx_to = self.ipc * (c + 1)
             data = self.data[idx_from:idx_to].detach()
             target = self.targets[idx_from:idx_to].detach()
-            data, target = self.decode(data, target)
+            data, target = decode_fn(data, target, self.factor, self.decode_type)
 
             data_dec.append(data)
             target_dec.append(target)
@@ -224,13 +148,8 @@ class Synthesizer():
                                              persistent_workers=nw > 0)
         return train_loader
 
-    def test(self, args, model, val_loader, nclass,
-             criterion,
-             optimizer,
-             scheduler,
+    def test(self, args, model, val_loader, nclass, criterion, optimizer, scheduler,
              device, logger, bench=True):
-        """Condensed data evaluation
-        """
         loader = self.loader(args, args.augment)
         test_data(model, loader, val_loader, nclass,
                   criterion,

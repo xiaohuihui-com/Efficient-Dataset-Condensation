@@ -6,17 +6,18 @@ match: grad
 data_dir: ./data
 save_dir: ./result
 save_ckpt: true
+data_pt: ''
 augment: false
 pretrained: false
 plotter: true
-load_memory: false
+load_memory: true
 dsa: true
 dsa_strategy: color_crop_flip_scale_rotate
 aug_type: color_crop_cutout
 num_workers: 8
 batch_size: 64
 batch_syn_max: 128
-ipc: 10
+ipc: 1
 repeat: 1
 epochs: 300
 init: mix
@@ -32,6 +33,7 @@ nclass: 10
 num_classes: 10
 size: 32
 channel: 3
+evaluation_model: [ 'convnet','resnet','densenet' ]
 model_params:
   convnet:
     net_norm: 'instance'
@@ -39,15 +41,15 @@ model_params:
     net_width: 128
     net_act: 'relu'
     net_pooling: 'avgpooling'
-  densenet_cifar:
+  densenet:
     nclass: 10
   resnet:
     depth: 10
-    net_norm: 'instance'
+    norm_type: 'batch'
   resnetap:
     depth: 10
     width: 1.0
-    net_norm: 'instance'
+    norm_type: 'instance'
     nch: 3
 learning:
   loss: 'ce'
@@ -60,5 +62,5 @@ learning:
 niter: 500
 inner_loop: 100
 n_data: 500
-lr_img: 0.005
+lr_img: 0.0005
 mom_img: 0.5

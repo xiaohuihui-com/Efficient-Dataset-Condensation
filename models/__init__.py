@@ -15,7 +15,7 @@ def get_model(s):
             "densenet161": DenseNet161,
             "densenet169": DenseNet169,
             "densenet201": DenseNet201,
-            "densenet_cifar": densenet_cifar,
+            "densenet": densenet_cifar,
             }[s.lower()]
 
 
@@ -51,17 +51,18 @@ def get_scheduler(s):
 def model_param_init(opt, device):
     net = opt.model
     if net == 'convnet':
-        model = get_model(net)(num_classes=opt.num_classes, channel=opt.channel, size=opt.size, **opt.model_params[net])
-    elif net == 'resnet':
-        model = get_model(net)(datatset=opt.dataset, num_classes=opt.num_classes, size=opt.size,
+        model = get_model(net)(num_classes=opt.num_classes, channel=opt.channel, size=opt.size,
                                **opt.model_params[net])
+    elif net == 'resnet':
+        model = get_model(net)(dataset=opt.dataset, num_classes=opt.num_classes, size=opt.size,
+                               **opt.model_params[net])
+    elif net == 'densenet':
+        model = get_model(net)(nclass=opt.num_classes)
     else:
         assert 'no this networks {}'.format(net)
     if torch.cuda.device_count() > 1:
-        print("Let's use", torch.cuda.device_count(), "GPUs!")
         model = nn.DataParallel(model)
     model.to(device)
-
     # get loss optimizer,schedule
     learn = opt.learning
     pg = [p for p in model.parameters() if p.requires_grad]
@@ -70,3 +71,34 @@ def model_param_init(opt, device):
     scheduler = get_scheduler(learn['scheduler'])(optimizer, milestones=[2 * opt.epochs // 3, 5 * opt.epochs // 6],
                                                   gamma=0.2)
     return model, criterion, optimizer, scheduler
+
+
+def evaluation_model_list_init(opt, device):
+    nets = opt.evaluation_model
+    print("evaluation_model_list: {}".format(nets))
+    model_list = []
+    for net in nets:
+        if net == 'convnet':
+            model = get_model(net)(num_classes=opt.num_classes, channel=opt.channel, size=opt.size,
+                                   **opt.model_params[net])
+        elif net == 'resnet':
+            model = get_model(net)(dataset=opt.dataset, num_classes=opt.num_classes, size=opt.size,
+                                   **opt.model_params[net])
+        elif net == 'densenet':
+            model = get_model(net)(nclass=opt.num_classes)
+        else:
+            assert 'no this networks {}'.format(net)
+        if torch.cuda.device_count() > 1:
+            model = nn.DataParallel(model)
+        model.to(device)
+
+        # get loss optimizer,schedule
+        learn = opt.learning
+        pg = [p for p in model.parameters() if p.requires_grad]
+        criterion = get_loss(learn['loss'])().to(device)
+        optimizer = get_optim(learn['optim'])(pg, **learn[learn['optim']])
+        scheduler = get_scheduler(learn['scheduler'])(optimizer, milestones=[2 * opt.epochs // 3, 5 * opt.epochs // 6],
+                                                      gamma=0.2)
+        model_list.append((model, criterion, optimizer, scheduler))
+
+    return model_list

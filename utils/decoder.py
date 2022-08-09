@@ -2,8 +2,6 @@ from math import ceil
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .common import save_img
-
 
 
 def decode_zoom(img, target, factor, size=-1):
@@ -46,10 +44,47 @@ def decode_fn(data, target, factor, decode_type, bound=128):
     if factor > 1:
         if decode_type == 'multi':
             data, target = decode_zoom_multi(data, target, factor)
+        elif decode_type == 'bound':
+            data, target = decode_zoom_bound(data, target, factor, bound=bound)
         else:
             data, target = decode_zoom(data, target, factor)
 
     return data, target
+
+
+def decode_zoom_bound(self, img, target, factor_max, bound=128):
+    """Uniform multi-formation with bounded number of synthetic data
+    """
+    bound_cur = bound - len(img)
+    budget = len(img)
+
+    data_multi = []
+    target_multi = []
+
+    idx = 0
+    decoded_total = 0
+    for factor in range(factor_max, 0, -1):
+        decode_size = factor ** 2
+        if factor > 1:
+            n = min(bound_cur // decode_size, budget)
+        else:
+            n = budget
+
+        decoded = self.decode_zoom(img[idx:idx + n], target[idx:idx + n], factor)
+        data_multi.append(decoded[0])
+        target_multi.append(decoded[1])
+
+        idx += n
+        budget -= n
+        decoded_total += n * decode_size
+        bound_cur = bound - decoded_total - budget
+
+        if budget == 0:
+            break
+
+    data_multi = torch.cat(data_multi)
+    target_multi = torch.cat(target_multi)
+    return data_multi, target_multi
 
 
 def decode(args, data, target):
@@ -73,6 +108,4 @@ def decode(args, data, target):
     target_dec = torch.cat(target_dec)
 
     print("Dataset is decoded! ", data_dec.shape)
-    # save_img('./results/test_dec.png', data_dec, unnormalize=False, dataname=args.dataset)
     return data_dec, target_dec
-

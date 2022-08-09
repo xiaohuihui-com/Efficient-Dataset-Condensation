@@ -155,6 +155,7 @@ def train_epoch(args,
                 optimizer,
                 device,
                 epoch=0,
+                n_data=-1,
                 aug=None,
                 mixup='vanilla'):
     losses = AverageMeter()
@@ -162,8 +163,8 @@ def train_epoch(args,
     top5 = AverageMeter()
     model.train()
     total = 0
-    train_bar = tqdm(train_loader)
-    for i, (input, target) in enumerate(train_bar):
+    # train_bar = tqdm(train_loader)
+    for i, (input, target) in enumerate(train_loader):
         input = input.to(device)
         target = target.to(device)
         if aug != None:
@@ -197,8 +198,11 @@ def train_epoch(args,
         loss.backward()
         optimizer.step()
         total += len(input)
-        train_bar.desc = "train epoch[{0}/{1}] ({2}/{3}) Loss: {loss.avg:.3f} Top1-acc: {top1.avg:.3f} Top5-acc: {top5.avg:.4f}" \
-            .format(epoch, args.epochs, total, len(train_loader.dataset), loss=losses, top1=top1, top5=top5)
+
+        # train_bar.desc = "train epoch[{0}] ({1}/{2}) Loss: {loss.avg:.3f} Top1-acc: {top1.avg:.3f} Top5-acc: {top5.avg:.4f}" \
+        #     .format(epoch, total, len(train_loader.dataset), loss=losses, top1=top1, top5=top5)
+        if (n_data > 0) and (total >= n_data):
+            break
     return top1.avg, top5.avg, losses.avg
 
 
@@ -395,16 +399,6 @@ class Trainer(object):
         return top1.avg, top5.avg, losses.avg
 
     def load_checkpoint(self, path):
-        #     try:
-        #         load_weights_dict = {k: v for k, v in weights_dict.items()
-        #                              if model.state_dict()[k].numel() == v.numel()}
-        #     except:
-        #         weights_dict = revise_module(weights_dict)
-        #         load_weights_dict = {k: v for k, v in weights_dict.items()
-        #                              if model.state_dict()[k].numel() == v.numel()}
-        #     print(model.load_state_dict(load_weights_dict, strict=False))
-        # else:
-        #     raise FileNotFoundError("not found weights file: {}".format(opt.weights))
         if os.path.isfile(path):
             print("=> loading checkpoint '{}'".format(path))
             checkpoint = torch.load(path)
@@ -597,7 +591,7 @@ def test_data(model, train_loader, val_loader, nclass, criterion, optimizer, sch
         best_acc_l.append(best_acc)
         acc_l.append(acc)
     logger.info(
-        f'Repeat {repeat} => Evalutation Best, last acc: {np.mean(best_acc_l):.2f} {np.mean(acc_l):.2f}\n')
+        f'Repeat {repeat} => Evalutation Best, last acc: {np.mean(best_acc_l):.2f}({np.std(best_acc_l):.2f}) {np.mean(acc_l):.2f}({np.std(acc_l):.2f})\n')
 
 
 def train_data(model, train_loader, val_loader, nclass, criterion, optimizer, scheduler, device, args, logger,

@@ -7,7 +7,7 @@ formatter2_format = '[%(asctime)s] : %(message)s'
 # 🍚通过变量的方式存放路径,也可以使用"os.path"来规范路径
 # logfile_path1 = r'F:\Pycharm File\PycharmProjects\python正课\day18\a1.log'  # log文件名
 
-logfile_path1 = os.path.join(os.path.dirname(__file__), 'mylog.log')  # log文件名
+logfile_path1 = os.path.join('../logs', 'all_log.log')  # log文件名
 
 # 🍚log配置字典, 里面就是上面提到的四种对象
 LOGGING_DIC = {
@@ -29,6 +29,8 @@ LOGGING_DIC = {
             'class': 'logging.FileHandler',  # 保存到文件里面去(日志保存的形式)
             'formatter': 'formatter1',  # 绑定的日志输出格式
             'filename': logfile_path1,  # 制定日志文件路径
+            # 'maxBytes': 10485760,  # 10MB
+            # 'backupCount': 50,  # 50
             'encoding': 'utf-8',  # 日志文件的编码，不再担心乱码问题
         },
         'terminal': {  # 自定义的"handlers"名字(终端)
@@ -61,24 +63,38 @@ LOGGING_DIC = {
 }
 
 import logging
+import logging.config
+import time
 
 
 def set_logfile(logger, logdir='.', mode='a'):
-    test_log = logging.FileHandler(os.path.join(logdir, 'log.log'), mode=mode, encoding='utf-8')
+    dir_time = time.strftime('%Y%m%d', time.localtime(time.time()))
+    current_time = time.strftime('%Y%m%d%H%M', time.localtime(time.time()))
+    os.makedirs(os.path.join(logdir, dir_time), exist_ok=True)
+    log_name = os.path.join(logdir, dir_time, current_time + '.log')
+    test_log = logging.FileHandler(log_name, mode=mode, encoding='utf-8')
     test_log.setLevel(logging.DEBUG)
     formatter = logging.Formatter('[%(asctime)s] %(filename)s:%(lineno)d %(levelname)s: %(message)s')
     test_log.setFormatter(formatter)
     logger.addHandler(test_log)
 
 
-if __name__ == '__main__':
-    import logging.config
-
+def set_logdir(logdir):
+    os.makedirs(logdir, exist_ok=True)
     logging.config.dictConfig(LOGGING_DIC)
-    logger = logging.getLogger()  # 执行后会去日志字典的"logger"里面找这个'自定义日志名1'(key)
-    # 追加写入文件a ，设置utf-8编码防止中文写入乱码
-    set_logfile(logger)
-    logging.info('logging.config.dictConfig')
+    logger = logging.getLogger()
+    set_logfile(logger, logdir)
+    return logger
+
+
+if __name__ == '__main__':
+    # os.makedirs('../logs', exist_ok=True)
+    # logging.config.dictConfig(LOGGING_DIC)
+    # logger = logging.getLogger()
+    # set_logfile(logger, '../logs'
+    logger = set_logdir('../logs')
+    logger.info('logging.config.dictConfig')
     # import yaml
-    # with open("settings.yaml", "w", encoding="utf8") as f:
+    #
+    # with open("config.yaml", "w", encoding="utf8") as f:
     #     yaml.safe_dump(LOGGING_DIC, f, sort_keys=True)
