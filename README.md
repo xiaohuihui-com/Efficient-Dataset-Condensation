@@ -41,11 +41,11 @@ efficientnet_pytorch
   ILSVRC2012_img_train.tar中含有1000个类别，每个类别大约3000张图片，解压之后是已经按类别分好的文件夹。如下所示：
 
 	```apl
---train
---------n01440764
---------n01443537
---------...
---------n15075141
+    --train
+    --------n01440764
+    --------n01443537
+    --------...
+    --------n15075141
 	```
 	
 	需要找到class100.txt中所对应的100个类别。
@@ -74,8 +74,6 @@ efficientnet_pytorch
 ```
 
 ## 项目文件使用
-
------
 
 1. 克隆仓库代码： `https://github.com/xiaohuihui-com/Efficient-Dataset-Condensation.git`
 2. 安装依赖包： 进入Efficient-Dataset-Condensation根目录，`pip install -r requirements.txt`
