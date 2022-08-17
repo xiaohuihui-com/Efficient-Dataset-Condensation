@@ -1,7 +1,5 @@
 # Efficient-Dataset-Condensation
 
-------
-
 论文：**[Dataset Condensation via Efficient Synthetic-Data Parameterization](https://arxiv.org/abs/2205.14959)**, **ICML'22** 
 
 源仓库代码：**https://github.com/snu-mllab/Efficient-Dataset-Condensation**
@@ -9,8 +7,6 @@
 重构优化代码：**[https://github.com/xiaohuihui-com/Efficient-Dataset-Condensation](https://github.com/xiaohuihui-com/Efficient-Dataset-Condensation)**
 
 ## 项目简介
-
-------
 
 对源仓库代码进行了重构优化，增加了log输出，减少参数设置，代码模块化，可读性更强。仅供学习使用。
 
@@ -23,6 +19,8 @@ matplotlib
 tqdm
 efficientnet_pytorch
 ```
+
+## About Dataset
 
 ### ImageNet数据集下载
 
