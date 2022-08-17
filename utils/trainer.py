@@ -581,7 +581,7 @@ class Tester(object):
         print("checkpoint saved! ", ckpt_path)
 
 
-def test_data(model, train_loader, val_loader, nclass, criterion, optimizer, scheduler, device, args, logger, repeat=3):
+def test_data(model, train_loader, val_loader, nclass, criterion, optimizer, scheduler, device, args, logger, repeat=1):
     best_acc_l = []
     acc_l = []
     for i in range(repeat):

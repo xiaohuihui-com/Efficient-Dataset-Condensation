@@ -135,3 +135,10 @@ class ConvNet(nn.Module):
         layers = nn.ModuleDict(layers)
 
         return layers, shape_feat
+
+
+def convnet(nclass, size, channel=3):
+    model = ConvNet(nclass, net_norm='instance', net_depth=3, net_width=128, channel=channel, net_act='relu',
+            net_pooling='avgpooling',
+            size=size)
+    return model

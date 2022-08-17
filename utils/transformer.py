@@ -25,7 +25,7 @@ class Compose(object):
 class Lighting(object):
     """Lighting noise(AlexNet - style PCA - based noise)"""
 
-    def __init__(self, alphastd, eigval, eigvec, device):
+    def __init__(self, alphastd, eigval, eigvec, device='cpu'):
         self.alphastd = alphastd
         self.eigval = torch.tensor(eigval, device=device)
         self.eigvec = torch.tensor(eigvec, device=device)
@@ -233,12 +233,13 @@ def transform_fashion(augment=False, from_tensor=False, normalize=True):
     return train_transform, test_transform
 
 
-def transform_imagenet(size=-1,
-                       augment=False,
-                       from_tensor=False,
-                       normalize=True,
-                       rrc=True,
-                       rrc_size=-1):
+def transform_imagenet(
+        size=-1,
+        augment=False,
+        from_tensor=False,
+        normalize=True,
+        rrc=True,
+        rrc_size=-1):
     if size > 0:
         resize_train = [transforms.Resize(size), transforms.CenterCrop(size)]
         resize_test = [transforms.Resize(size), transforms.CenterCrop(size)]

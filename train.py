@@ -21,6 +21,7 @@ def main(args):
     logger.info('{}'.format(opt))
     os.environ["CUDA_VISIBLE_DEVICES"] = opt.device_ids
     set_seed(opt.seed)
+    opt.save_ckpt = True
     # get data
     train_loader, val_loader, nclass = load_data(opt)
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")

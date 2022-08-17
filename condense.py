@@ -2,7 +2,7 @@ import os
 import datetime
 import argparse
 import torch
-from models import model_param_init, get_optim
+from models import model_param_init, get_optim, evaluation_model_list_init
 from utils.common import set_seed, save_img
 from utils.matchloss import matchloss
 from utils.dataloader import load_resized_data, ClassMemDataLoader, ClassDataLoader
@@ -15,6 +15,41 @@ from config.logger import Logger
 logger = Logger()
 
 
+# 自己只需要定义:factor=1,2,3  init=mix/random  ipc  dataset
+def default_params(opt):
+    if opt.dataset == 'imagenet':
+        opt.load_memory = True
+        opt.size = 224
+        opt.augment = True
+        opt.n_data = 500
+        opt.epochs = 2000
+        opt.metric = 'l1'
+        opt.mix_p = 1.0
+        opt.model = 'resnetap'
+        if opt.ipc == 1:
+            opt.lr_img = 0.0003
+        elif opt.ipc == 10:
+            opt.lr_img = 0.003
+        else:
+            opt.lr_img = 0.006
+    else:
+        opt.load_memory = True
+        opt.size = 32
+        opt.augment = False
+        opt.n_data = 2000
+        opt.epochs = 1000
+        opt.metric = 'mse'
+        opt.mix_p = 0.5
+        opt.model = 'convnet'
+        if opt.ipc == 1:
+            opt.lr_img = 0.0005
+        elif opt.ipc == 10:
+            opt.lr_img = 0.005
+        else:
+            opt.lr_img = 0.025
+    return opt
+
+
 def main(args):
     start_time = datetime.datetime.now()
     opt = get_config(args.config)
@@ -24,6 +59,7 @@ def main(args):
     logger.info('{}'.format(opt))
     os.environ["CUDA_VISIBLE_DEVICES"] = opt.device_ids
     set_seed(opt.seed)
+    opt = default_params(opt)
     # get data
     device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
     trainset, val_loader = load_resized_data(opt)
@@ -37,7 +73,7 @@ def main(args):
                                        pin_memory=True,
                                        drop_last=True)
     nclass = opt.num_classes
-    opt.epochs = 1000
+
     logger.info("Using {} device.".format(device))
     logger.info('Using {} dataloader workers every process'.format(opt.num_workers))
     logger.info("Using {} {} images for training, {} images for validation." \
@@ -53,12 +89,13 @@ def main(args):
              unnormalize=True,
              dataname=opt.dataset)
 
-    model, criterion, optimizer, scheduler = model_param_init(opt, device)
-    synset.test(opt, model, val_loader, nclass, criterion, optimizer, scheduler, device, logger, bench=False)
+    # model, criterion, optimizer, scheduler = model_param_init(opt, device)
+    # synset.test(opt, model, val_loader, nclass, criterion, optimizer, scheduler, device, logger, bench=False)
 
     learn = opt.learning
     optim_img = get_optim(learn['optim'])(synset.parameters(), lr=opt.lr_img, momentum=opt.mom_img)
-    it_test = [50, 100, 250, 500]  # 50，100，250，500
+    niter = opt.niter
+    it_test = [niter / 10, niter / 5, niter / 2, niter]  # 50，100，250，500
     logger.info(f"\nStart condensing with {opt.match} matching for {opt.niter} iteration")
 
     for it in range(opt.niter):
@@ -103,7 +140,9 @@ def main(args):
                 [synset.data.detach().cpu(), synset.targets.cpu()],
                 os.path.join(save_dir, f'ipc{opt.ipc}_data.pt'))
             print("img and data saved!")
-            synset.test(opt, model, val_loader, nclass, criterion, optimizer, scheduler, device, logger, bench=False)
+            # model_list = evaluation_model_list_init(opt, device)
+            # synset.test(opt, model, val_loader, nclass, criterion, optimizer, scheduler, device, logger, model_list,
+            #             bench=True)
 
     end_time = datetime.datetime.now()
     run_time = (end_time - start_time).total_seconds()
@@ -117,8 +156,9 @@ if __name__ == '__main__':
                         default='cifar10',
                         choices=['mnist', 'fashion', 'svhn', 'cifar10', 'cifar100', 'imagenet'])
     parser.add_argument('--data_dir', type=str, default='./data')
-    parser.add_argument('--model', type=str, default='convnet')
+    parser.add_argument('--init', type=str, default='mix', choices=['mix', 'random'])
     parser.add_argument('--ipc', type=int, default=10)
+    parser.add_argument('--factor', type=int, default=2)
 
     args = parser.parse_args()
     main(args)

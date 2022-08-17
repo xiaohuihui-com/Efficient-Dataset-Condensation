@@ -86,6 +86,7 @@ class ImageFolder(datasets.DatasetFolder):
         if seed == 0:
             with open('./class100.txt', 'r') as f:
                 class_name = f.readlines()
+            # class_name = sorted(class_name)
             for c in class_name:
                 c = c.split('\n')[0]
                 classes.append(c)
@@ -98,6 +99,7 @@ class ImageFolder(datasets.DatasetFolder):
 
         class_to_idx = {cls_name: i for i, cls_name in enumerate(classes)}
         assert len(classes) == nclass
+        print(classes)
 
         return classes, class_to_idx
 
@@ -454,7 +456,7 @@ def load_data(args):
         val_dataset = ImageFolder(valdir,
                                   test_transform,
                                   nclass=args.nclass,
-                                  seed=args.dseed,
+                                  seed=args.seed,
                                   load_memory=args.load_memory)
 
         nclass = len(train_dataset.classes)
@@ -564,16 +566,14 @@ def load_resized_data(args):
         _, test_transform = transform_imagenet(size=args.size)
         train_dataset = ImageFolder(traindir,
                                     transform=transform,
-                                    nclass=args.nclass,
-                                    phase=args.phase,
-                                    seed=args.dseed,
+                                    nclass=args.num_classes,
+                                    seed=args.seed,
                                     load_memory=args.load_memory,
                                     load_transform=load_transform)
         val_dataset = ImageFolder(valdir,
                                   test_transform,
-                                  nclass=args.nclass,
-                                  phase=args.phase,
-                                  seed=args.dseed,
+                                  nclass=args.num_classes,
+                                  seed=args.seed,
                                   load_memory=False)
 
     val_loader = MultiEpochsDataLoader(val_dataset,
@@ -593,17 +593,31 @@ def load_data_path(args, data_pt):
     if args.pretrained:
         args.augment = False
 
-    if args.dataset[:5] == 'cifar':
-        transform_fn = transform_cifar
-    elif args.dataset == 'svhn':
-        transform_fn = transform_svhn
-    elif args.dataset == 'mnist':
-        transform_fn = transform_mnist
-    elif args.dataset == 'fashion':
-        transform_fn = transform_fashion
-    train_transform, test_transform = transform_fn(augment=args.augment, from_tensor=False)
+    if args.dataset == 'imagenet':
+        traindir = os.path.join(args.imagenet_dir, 'train')
+        valdir = os.path.join(args.imagenet_dir, 'val')
 
-    # Load condensed dataset
+        train_transform, test_transform = transform_imagenet(augment=args.augment,
+                                                             from_tensor=False,
+                                                             size=args.size,
+                                                             rrc=True)
+        val_dataset = ImageFolder(valdir,
+                                  test_transform,
+                                  nclass=args.nclass,
+                                  seed=args.seed,
+                                  load_memory=args.load_memory)
+    else:
+        if args.dataset[:5] == 'cifar':
+            transform_fn = transform_cifar
+        elif args.dataset == 'svhn':
+            transform_fn = transform_svhn
+        elif args.dataset == 'mnist':
+            transform_fn = transform_mnist
+        elif args.dataset == 'fashion':
+            transform_fn = transform_fashion
+        train_transform, test_transform = transform_fn(augment=args.augment, from_tensor=False)
+
+        # Load condensed dataset
     if 'idc' in args.method:
         data, target = torch.load(data_pt)
         print("Load condensed data ", data_pt, data.shape)
@@ -611,56 +625,41 @@ def load_data_path(args, data_pt):
         data = torch.clamp(data, min=0., max=1.)
         if args.factor > 1:
             data, target = decode(args, data, target)
-
-        train_transform, _ = transform_fn(augment=args.augment, from_tensor=True)
+        if args.dataset == 'imagenet':
+            train_transform, _ = transform_imagenet(augment=args.augment,
+                                                    from_tensor=True,
+                                                    size=args.size,
+                                                    rrc=True)
+        else:
+            train_transform, _ = transform_fn(augment=args.augment, from_tensor=True)
         train_dataset = TensorDataset(data, target, train_transform)
-    else:
-        if args.dataset == 'cifar10':
-            train_dataset = torchvision.datasets.CIFAR10(args.data_dir,
-                                                         train=True,
-                                                         transform=train_transform)
-        elif args.dataset == 'cifar100':
-            train_dataset = torchvision.datasets.CIFAR100(args.data_dir,
-                                                          train=True,
-                                                          transform=train_transform)
-        elif args.dataset == 'svhn':
-            train_dataset = torchvision.datasets.SVHN(os.path.join(args.data_dir, 'svhn'),
-                                                      split='train',
-                                                      transform=train_transform)
-            train_dataset.targets = train_dataset.labels
-        elif args.dataset == 'mnist':
-            train_dataset = torchvision.datasets.MNIST(args.data_dir,
-                                                       train=True,
-                                                       transform=train_transform)
-        elif args.dataset == 'fashion':
-            train_dataset = torchvision.datasets.FashionMNIST(args.data_dir,
-                                                              train=True,
-                                                              transform=train_transform)
 
-        indices = randomselect(train_dataset, args.ipc, nclass=args.nclass)
-        train_dataset = Subset(train_dataset, indices)
-        print(f"Random select {args.ipc} data (total {len(indices)})")
 
     # Test dataset
     if args.dataset == 'cifar10':
         val_dataset = torchvision.datasets.CIFAR10(args.data_dir,
                                                    train=False,
+                                                   download=True,
                                                    transform=test_transform)
     elif args.dataset == 'cifar100':
         val_dataset = torchvision.datasets.CIFAR100(args.data_dir,
                                                     train=False,
+                                                    download=True,
                                                     transform=test_transform)
     elif args.dataset == 'svhn':
         val_dataset = torchvision.datasets.SVHN(os.path.join(args.data_dir, 'svhn'),
                                                 split='test',
+                                                download=True,
                                                 transform=test_transform)
     elif args.dataset == 'mnist':
         val_dataset = torchvision.datasets.MNIST(args.data_dir,
                                                  train=False,
+                                                 download=True,
                                                  transform=test_transform)
     elif args.dataset == 'fashion':
         val_dataset = torchvision.datasets.FashionMNIST(args.data_dir,
                                                         train=False,
+                                                        download=True,
                                                         transform=test_transform)
 
     print("Training data shape: ", train_dataset[0][0].shape)

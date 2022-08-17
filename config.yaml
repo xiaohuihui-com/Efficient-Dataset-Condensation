@@ -1,16 +1,17 @@
-dataset: svhn
+dataset: cifar10
 model: convnet
 method: idc
 metric: mse
 match: grad
 data_dir: ./data
+imagenet_dir: ./data/imagenet
 save_dir: ./result
-save_ckpt: true
+save_ckpt: false
 data_pt: ''
 augment: false
 pretrained: false
 plotter: true
-load_memory: true
+load_memory: false
 dsa: true
 dsa_strategy: color_crop_flip_scale_rotate
 aug_type: color_crop_cutout
@@ -28,29 +29,15 @@ mixup_net: cut
 mix_p: 0.5
 beta: 1.0
 seed: 0
-device_ids: '0,1'
+device_ids: '0,1,2,3'
 nclass: 10
 num_classes: 10
 size: 32
 channel: 3
-evaluation_model: [ 'convnet','resnet','densenet' ]
+evaluation_model: [ 'convnet','resnet10_in','densenet' ]
 model_params:
-  convnet:
-    net_norm: 'instance'
-    net_depth: 3
-    net_width: 128
-    net_act: 'relu'
-    net_pooling: 'avgpooling'
   densenet:
     nclass: 10
-  resnet:
-    depth: 10
-    norm_type: 'batch'
-  resnetap:
-    depth: 10
-    width: 1.0
-    norm_type: 'instance'
-    nch: 3
 learning:
   loss: 'ce'
   optim: 'sgd'
@@ -59,8 +46,8 @@ learning:
     lr: 0.01
     momentum: 0.9
     weight_decay: 0.0005
-niter: 500
+niter: 2000
 inner_loop: 100
-n_data: 500
-lr_img: 0.0005
+n_data: 2000
+lr_img: 0.005
 mom_img: 0.5

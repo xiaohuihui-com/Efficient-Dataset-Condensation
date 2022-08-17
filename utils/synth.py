@@ -149,17 +149,12 @@ class Synthesizer():
         return train_loader
 
     def test(self, args, model, val_loader, nclass, criterion, optimizer, scheduler,
-             device, logger, bench=True):
+             device, logger, model_list=None, bench=True):
         loader = self.loader(args, args.augment)
-        test_data(model, loader, val_loader, nclass,
-                  criterion,
-                  optimizer,
-                  scheduler,
-                  device, args, logger=logger)
-
         if bench and not (args.dataset in ['mnist', 'fashion']):
-            test_data(model, loader, val_loader, nclass,
-                      criterion,
-                      optimizer,
-                      scheduler,
-                      device, args, logger=logger)
+            # model_list = evaluation_model_list_init(args, device)
+            for i, (model, criterion, optimizer, scheduler) in enumerate(model_list):
+                logger.info("Using evaluating model: {}".format(args.evaluation_model[i]))
+                test_data(model, loader, val_loader, nclass, criterion, optimizer, scheduler, device, args, logger)
+        else:
+            test_data(model, loader, val_loader, nclass, criterion, optimizer, scheduler, device, args, logger=logger)

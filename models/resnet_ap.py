@@ -302,34 +302,6 @@ class ResNetAP(nn.Module):
         return features[idx_from:idx_to + 1]
 
 
-if __name__ == "__main__":
-    import torch
-
-    dataset = 'imagenet'
-    num_classes = 10
-    size = int(224 * 0.5)
-    depth = 10
-    width = 1.0
-    norm_type = 'instance'
-    nch = 1
-
-    model = ResNetAP(dataset,
-                     depth,
-                     num_classes,
-                     size=size,
-                     width=width,
-                     norm_type=norm_type,
-                     nch=nch).cuda()
-    # print(model)
-    print('# model parameters: {:.1f}M'.format(
-        sum([p.data.nelement() for p in model.parameters()]) / 10**6))
-
-    model.train()
-    for name, param in model.named_parameters():
-        if len(param.shape) > 2:
-            print(name, param.shape)
-    # print(model)
-
-    data = torch.ones([128, nch, size, size]).to('cuda')
-    output = model(data)
-    print(output.shape)
+def resnetap(dataset, nclass, size):
+    model = ResNetAP(dataset, 10, nclass, width=1.0, norm_type='instance', size=size, nch=3)
+    return model

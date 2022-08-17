@@ -270,18 +270,16 @@ class ResNet(nn.Module):
         return features[idx_from:idx_to + 1]
 
 
-if __name__ == "__main__":
-    import torch
+def resnet10_in(dataset, nclass, size):
+    model = ResNet(dataset, 10, nclass, 'instance', size, nch=3)
+    return model
 
-    dataset = 'mnist'
-    depth = 10
-    num_classes = 10
-    size = 28
-    norm_type = 'instance'
 
-    model = ResNet(dataset, depth, num_classes, size=size, norm_type=norm_type)
-    print(model)
+def resnet10_bn(dataset, nclass, size):
+    model = ResNet(dataset, 10, nclass, 'batch', size, nch=3)
+    return model
 
-    data = torch.ones([128, 3, size, size])
-    output = model(data)
-    print(output.shape)
+
+def resnet18_bn(dataset, nclass, size):
+    model = ResNet(dataset, 18, nclass, 'batch', size, nch=3)
+    return model
